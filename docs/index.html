@@ -124,7 +124,7 @@
   <h2>Abstract</h2>
   <div class="abstract">
     <p>
-    We asked which visible pages under-capture clicks relative to peers at the same search position, using FlyRank's anonymized 30,000-page starter search dataset. We built a transparent rule-based baseline (a page's click-through-rate gap below its position tier's median, weighted by traffic) and a Random Forest model trained only on indirect, pre-CTR-observation signals — position, traffic volume, content age, word count — deliberately excluding CTR itself. On a client-grouped holdout split, the model cleared the base rate (Precision@200 of 0.55 vs. a 0.455 base rate) while the baseline scored near-perfect by construction, a difference we explain rather than celebrate. Along the way, we found that a naive random train/test split overstated the model's real precision by 42 points versus the honest client-grouped split — a concrete demonstration of why validation design matters as much as model choice. The result is a decision-support ranking, not a causal or predictive claim, intended to help a content editor with limited time choose which pages to review first.
+    We asked which visible pages under-capture clicks relative to peers at the same search position, using FlyRank's anonymized 30,000-page starter search dataset and, to check generalization, 187,466 real rows from FlyRank's full search warehouse. We built a transparent rule-based baseline (a page's click-through-rate gap below its position tier's median, weighted by traffic) and a Random Forest model trained only on indirect, pre-CTR-observation signals — position, traffic volume, content age, word count — deliberately excluding CTR itself. On a client-grouped holdout split, the model cleared the base rate on the starter slice (Precision@200 of 0.55 vs. a 0.455 base rate) and performed substantially better at warehouse scale (Precision@200 of 0.875 vs. a 0.250 base rate), while the baseline scored near-perfect by construction in both cases, a difference we explain rather than celebrate. Along the way, we found that a naive random train/test split overstated the model's real precision by 42 points versus the honest client-grouped split — a concrete demonstration of why validation design matters as much as model choice. The result is a decision-support ranking, not a causal or predictive claim, intended to help a content editor with limited time choose which pages to review first.
     </p>
   </div>
 
@@ -146,6 +146,12 @@
   <div class="callout">
     <strong>Deliberately excluded:</strong> <code>trend_direction</code> and <code>trend_pct</code> (these are the columns our label would be circularly derived from, per the dataset's own documentation); CTR itself from the model's feature set (see Methodology); and any product-decision flag — none are shipped in this release, by design, so there was nothing to accidentally leak in.
   </div>
+
+  <h3>Warehouse-scale validation</h3>
+  <p>
+    To check whether the starter-slice findings generalize, we repeated the full pipeline on real warehouse data: two mid-panel months (February and April 2026, deliberately not adjacent, never the final/<code>_sample</code> month per the dataset's own leakage warning) from <code>FlyRank/internship-warehouse</code>'s <code>fact_content_daily_performance</code> table, aggregated to content-client-month grain the same way as the starter slice. This produced 187,466 candidate rows across 50 clients — roughly 11× the starter dataset's scale.
+  </p>
+
 
   <h2>Methodology</h2>
 
@@ -212,12 +218,27 @@
     <strong>Errors:</strong> the model was wrong on 42.3% of the test set. Hand-reviewed wrong cases were consistently borderline — pages at mediocre positions with modest traffic that could plausibly land on either side of their tier's median CTR for reasons the honest features can't see (title quality, snippet wording, search-intent match). That's the honest ceiling of predicting CTR-underperformance without looking at CTR.
   </p>
 
+  <h3>Does it hold at warehouse scale?</h3>
+  <p>
+    Yes — and more strongly than the starter slice suggested. Re-running the identical pipeline (honest features, client-grouped split, same label construction) on 187,466 real warehouse rows across 50 clients produced a substantially <em>stronger</em> result than the 30k-row starter slice:
+  </p>
+  <table>
+    <tr><th>Metric</th><th>Starter CSV (30k rows, 32 clients)</th><th>Warehouse (187k rows, 50 clients, 2 months)</th></tr>
+    <tr><td>Test set size</td><td>1,461</td><td>51,566</td></tr>
+    <tr><td>Base rate</td><td>0.455</td><td>0.250</td></tr>
+    <tr><td>Random Forest ROC AUC</td><td>0.658</td><td><strong>0.861</strong></td></tr>
+    <tr><td>Random Forest Precision@200</td><td>0.550</td><td><strong>0.875</strong></td></tr>
+  </table>
+  <p>
+    The honest-feature Random Forest's Precision@200 more than doubled the gap over its base rate at warehouse scale (0.875 vs. a 0.250 base rate — a 3.5× lift) compared to the starter slice (0.550 vs. 0.455 — barely above chance by comparison). The most likely explanation: with roughly 11× more training data, the model can learn finer, more reliable position/traffic/freshness interaction patterns that a 30k-row sample was simply too small and noisy to support. This is genuine evidence the underlying signal is real, not an artifact of a small starter sample — full results in <code>w08_warehouse_scale_model.ipynb</code>.
+  </p>
+
   <h2>Limitations &amp; Honest Framing</h2>
   <ul>
     <li><strong>Not future-predictive.</strong> This is a same-window comparison. It does not claim a page will decline, or that editing it will recover clicks.</li>
     <li><strong>The baseline-vs-model comparison isn't a fair fight, on purpose.</strong> The baseline uses CTR directly; the model deliberately doesn't, to answer a harder question. The baseline's high score reflects that head start, not modeling quality.</li>
-    <li><strong>Starter-slice scale.</strong> 30,000 rows, 32 clients, one 90-day snapshot — not validated across seasons or at the full ~79M-row warehouse scale.</li>
-    <li><strong>Silent exclusions.</strong> Clients without tracking history in this window simply aren't represented — not as zeros, just absent.</li>
+    <li><strong>Scale, partially addressed.</strong> Core findings were validated on 187,466 real warehouse rows across 50 clients and two separate months, not just the 30k-row starter slice — but this is still two specific months out of the full ~79M-row, multi-year warehouse, not a comprehensive multi-season validation.</li>
+    <li><strong>Silent exclusions.</strong> Clients without tracking history in a given window simply aren't represented — not as zeros, just absent. The warehouse run used 50 of the warehouse's clients; the starter run used 32 — neither claims full roster coverage.</li>
     <li><strong>No causal claims.</strong> Nothing here claims a title rewrite causes a CTR increase, and nothing claims insight into Google's ranking algorithm.</li>
   </ul>
   <p>
@@ -239,9 +260,10 @@
     <li><a href="https://github.com/Seif-2/ML-week-1-FLY/blob/main/work/notebooks/w05_model.ipynb">w05_model.ipynb</a> — the model, split, and initial comparison</li>
     <li><a href="https://github.com/Seif-2/ML-week-1-FLY/blob/main/work/notebooks/w06_validation_audit.ipynb">w06_validation_audit.ipynb</a> — the random-vs-grouped split audit and leakage re-check</li>
     <li><a href="https://github.com/Seif-2/ML-week-1-FLY/blob/main/work/notebooks/w07_action_playbook.ipynb">w07_action_playbook.ipynb</a> — the final ranked queue and metrics receipt</li>
+    <li><a href="https://github.com/Seif-2/ML-week-1-FLY/blob/main/work/notebooks/w08_warehouse_scale_model.ipynb">w08_warehouse_scale_model.ipynb</a> — warehouse-scale validation (187k real rows, 2 months)</li>
     <li><a href="https://github.com/Seif-2/ML-week-1-FLY/blob/main/work/notebooks/capstone.ipynb">capstone.ipynb</a> — this paper's mirror notebook</li>
   </ul>
-  <p>Random seed 42 used throughout (data split, Logistic Regression, Random Forest). Metrics receipt: <code>work/outputs/w07_metrics.json</code>.</p>
+  <p>Random seed 42 used throughout (data split, Logistic Regression, Random Forest). Metrics receipts: <code>work/outputs/w07_metrics.json</code>, <code>work/outputs/w08_warehouse_metrics.json</code>.</p>
 
   <footer>
     <p><strong>Acknowledgments &amp; data credit:</strong> Built on the FlyRank ML Internship dataset — <a href="https://flyrank.ai">flyrank.ai</a>.</p>

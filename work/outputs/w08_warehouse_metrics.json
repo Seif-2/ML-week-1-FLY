@@ -1,0 +1,18 @@
+{
+  "months_used": ["2026-02", "2026-04"],
+  "n_test": 51566,
+  "n_clients_test": 15,
+  "client_overlap": 0,
+  "base_rate": 0.2502618004111236,
+  "results_table": [
+    {"method": "Baseline (ctr_gap x impressions)", "roc_auc": 1.0, "precision@50": 1.0, "precision@200": 1.0},
+    {"method": "Logistic Regression (honest features)", "roc_auc": 0.775, "precision@50": 0.68, "precision@200": 0.655},
+    {"method": "Random Forest (honest features)", "roc_auc": 0.861, "precision@50": 0.88, "precision@200": 0.875}
+  ],
+  "comparison_to_starter_csv": {
+    "n_test": {"starter_csv_w05": 1461, "warehouse_2months": 51566},
+    "base_rate": {"starter_csv_w05": 0.455, "warehouse_2months": 0.250},
+    "rf_roc_auc": {"starter_csv_w05": 0.658, "warehouse_2months": 0.861},
+    "rf_precision_at_200": {"starter_csv_w05": 0.550, "warehouse_2months": 0.875}
+  }
+}
