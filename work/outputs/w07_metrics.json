@@ -1,0 +1,15 @@
+{
+  "model": "RandomForestClassifier (n_estimators=300, max_depth=8, random_state=42)",
+  "split": "GroupShuffleSplit by client_id, test_size=0.3, random_state=42",
+  "n_train": 15265,
+  "n_test": 1461,
+  "base_rate_test": 0.45516769336071183,
+  "precision_at_50": 0.52,
+  "precision_at_200": 0.55,
+  "baseline_precision_at_50": 1.0,
+  "baseline_precision_at_200": 1.0,
+  "baseline_caveat": "Baseline scores near-perfect by construction (uses ctr directly, which the label is thresholded from) \u2014 see w05 Section 1.",
+  "random_split_precision_at_50_naive": 0.94,
+  "grouped_split_precision_at_50_honest": 0.52,
+  "memorization_gap_note": "Random split overstates Precision@50 by ~0.42 vs grouped-by-client split \u2014 see w06."
+}

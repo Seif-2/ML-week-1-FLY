@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Which Pages Under-Capture Clicks? A CTR-Opportunity Ranking Study | FlyRank ML Internship</title>
+<style>
+  :root {
+    --ink: #1a1d23;
+    --muted: #5b6270;
+    --bg: #fdfdfc;
+    --card: #f5f4f1;
+    --accent: #1f6f5c;
+    --accent-soft: #e4f0ec;
+    --border: #e2e0da;
+    --code-bg: #f0efe9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.65;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 48px 20px 100px; }
+  header.hero { max-width: 760px; margin: 0 auto; padding: 56px 20px 20px; }
+  h1 { font-size: 1.9rem; line-height: 1.25; margin: 0 0 8px; }
+  .subtitle { color: var(--muted); font-size: 1.05rem; margin-bottom: 28px; }
+  .meta-line { font-size: 0.9rem; color: var(--muted); margin-bottom: 36px; }
+  .meta-line a { color: var(--accent); }
+  h2 {
+    font-size: 1.3rem;
+    margin-top: 48px;
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--border);
+  }
+  h3 { font-size: 1.05rem; margin-top: 28px; margin-bottom: 10px; }
+  p { margin: 0 0 16px; }
+  .abstract {
+    background: var(--card);
+    border-left: 4px solid var(--accent);
+    padding: 20px 24px;
+    border-radius: 4px;
+    margin-bottom: 8px;
+  }
+  .abstract p { margin: 0; }
+  code {
+    background: var(--code-bg);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.88em;
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 18px 0;
+    font-size: 0.92rem;
+  }
+  th, td {
+    text-align: left;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  th { background: var(--card); font-weight: 600; }
+  tr:last-child td { border-bottom: none; }
+  .callout {
+    background: var(--accent-soft);
+    border-radius: 6px;
+    padding: 16px 20px;
+    margin: 18px 0;
+    font-size: 0.95rem;
+  }
+  .callout strong { color: var(--accent); }
+  ul, ol { padding-left: 22px; margin: 0 0 16px; }
+  li { margin-bottom: 6px; }
+  figure { margin: 24px 0; text-align: center; }
+  figure img { max-width: 100%; border-radius: 6px; border: 1px solid var(--border); }
+  figcaption { font-size: 0.88rem; color: var(--muted); margin-top: 8px; }
+  .finding-block {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px 20px;
+    margin: 16px 0;
+  }
+  .finding-block .verdict {
+    display: inline-block;
+    font-weight: 700;
+    font-size: 0.78rem;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    padding: 2px 10px;
+    border-radius: 20px;
+    margin-bottom: 8px;
+  }
+  .v-mixed { background: #fdeecb; color: #8a5a00; }
+  .v-false { background: #fbe0df; color: #a3312a; }
+  footer {
+    margin-top: 64px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+    font-size: 0.88rem;
+    color: var(--muted);
+  }
+  footer a { color: var(--accent); }
+  .repro-list a { word-break: break-all; }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <h1>Which Pages Under-Capture Clicks? A CTR-Opportunity Ranking Study on Real Search Data</h1>
+  <div class="subtitle">Ranking underperforming pages by position-adjusted click-through rate, with an honest look at what a rule-based baseline and a client-holdout model can and can't claim.</div>
+  <div class="meta-line">
+    FlyRank ML Internship — Applied Search Intelligence Track ·
+    <a href="https://github.com/Seif-2/ML-week-1-FLY">Repository &amp; reproducible notebooks</a>
+  </div>
+</header>
+
+<div class="wrap" style="padding-top:0;">
+
+  <h2>Abstract</h2>
+  <div class="abstract">
+    <p>
+    We asked which visible pages under-capture clicks relative to peers at the same search position, using FlyRank's anonymized 30,000-page starter search dataset. We built a transparent rule-based baseline (a page's click-through-rate gap below its position tier's median, weighted by traffic) and a Random Forest model trained only on indirect, pre-CTR-observation signals — position, traffic volume, content age, word count — deliberately excluding CTR itself. On a client-grouped holdout split, the model cleared the base rate (Precision@200 of 0.55 vs. a 0.455 base rate) while the baseline scored near-perfect by construction, a difference we explain rather than celebrate. Along the way, we found that a naive random train/test split overstated the model's real precision by 42 points versus the honest client-grouped split — a concrete demonstration of why validation design matters as much as model choice. The result is a decision-support ranking, not a causal or predictive claim, intended to help a content editor with limited time choose which pages to review first.
+    </p>
+  </div>
+
+  <h2>Introduction</h2>
+  <p>
+    Content teams can't manually review every page a site publishes. When search visibility exists but clicks don't follow — a page shows up, gets impressions, but people scroll past it — that's a specific, fixable-looking problem: the title, meta description, or on-SERP snippet may not be earning the click the position deserves. But "low CTR" only means something relative to where a page ranks: a 2% click-through rate is excellent at position 15 and poor at position 2. A useful system has to compare pages to their true peers, not to a single global threshold.
+  </p>
+  <p>
+    This work supports one decision: <em>which page does a content editor open first</em>, out of thousands, when they have time to review a handful this week.
+  </p>
+
+  <h2>Data</h2>
+  <p>
+    We used the FlyRank ML Internship starter dataset (<code>content_refresh_anonymized.csv</code>): 30,000 pseudonymized content items across 32 clients, with trailing-90-day search metrics from Google Search Console. All identifiers (<code>content_id</code>, <code>client_id</code>) are pseudonyms used only for grouping and splitting, never as model features.
+  </p>
+  <p>
+    We restricted analysis to pages with at least 500 impressions in the window and a real recorded average position (excluding rows where position data was unavailable) — 16,726 pages met this bar. This floor exists so any click-through-rate comparison rests on enough traffic to trust, not noise from a handful of impressions.
+  </p>
+  <div class="callout">
+    <strong>Deliberately excluded:</strong> <code>trend_direction</code> and <code>trend_pct</code> (these are the columns our label would be circularly derived from, per the dataset's own documentation); CTR itself from the model's feature set (see Methodology); and any product-decision flag — none are shipped in this release, by design, so there was nothing to accidentally leak in.
+  </div>
+
+  <h2>Methodology</h2>
+
+  <h3>Signal checks, before trusting the rule</h3>
+  <p>Before encoding any rule, we checked two signals against real bucket tables:</p>
+
+  <div class="finding-block">
+    <span class="verdict v-mixed">Mixed</span>
+    <p><strong>Signal A — CTR varies by position tier.</strong> Median CTR mostly falls with weaker position (page_1: 0.24%, striking: 0.17%, page_3_5: 0.09%, deep: 0.00%), but the smallest tier (top_3, n=458) scored below page_1 (n=7,064) — the data dictionary itself flags this tier's low volume floor as unreliable for exact ranking. We trusted the tier signal for the bulk of pages, not the exact order at the extreme.</p>
+  </div>
+
+  <div class="finding-block">
+    <span class="verdict v-false">False</span>
+    <p><strong>Signal B — staleness predicts CTR underperformance.</strong> The two large, trustworthy freshness buckets differed by only ~2.7 percentage points (49.1% vs. 46.4% underperform rate) — a clearly negative result. Staleness plausibly drives FlyRank's separate refresh flag, but it does not meaningfully predict CTR-specific underperformance in this data, so we left it out of our score entirely. A clean negative that simplified the model.</p>
+  </div>
+
+  <h3>Label / proxy</h3>
+  <p>
+    <code>underperform_flag</code>: 1 when a page's CTR sits below the median CTR of other pages at its own position tier. This is an observed, current-window comparison — not a future outcome, and not derived from any FlyRank product decision.
+  </p>
+
+  <h3>Baseline</h3>
+  <p>
+    <code>score = ctr_gap × impressions_90d</code>, with one reason code (<code>ctr_gap_vs_position_tier</code>) and one action label (<code>review_title_meta_snippet</code>). Because the label is thresholded directly from <code>ctr_gap</code>, this baseline effectively measures the same quantity the label is built from — it will score near-perfect, and we explain why below rather than treat that as a win.
+  </p>
+
+  <h3>Model</h3>
+  <p>
+    Random Forest (300 trees, max depth 8, seed 42), trained on an <strong>honest feature set that excludes CTR entirely</strong>: <code>impressions_90d</code>, <code>avg_position</code>, <code>content_age_days</code>, <code>days_since_last_update</code>, <code>word_count</code>, <code>content_type</code>, <code>main_intent</code>, <code>position_tier</code>. The real question this model answers: before carefully measuring a page's click-through rate, can cheaper, indirect signals already hint at which pages are likely underperforming?
+  </p>
+
+  <h3>Validation design</h3>
+  <p>
+    Split grouped by <code>client_id</code> (70/30, zero client overlap between train and test, verified directly). We chose this over a random row split because pages from the same client likely share template and writing-style patterns that a random split would let the model memorize rather than genuinely learn.
+  </p>
+  <p>
+    We tested this choice directly: the same model trained and evaluated under a naive random split reported Precision@50 of <strong>0.94</strong> — nearly double the grouped-split number of <strong>0.52</strong>. That 0.42-point gap is memorization, not skill, and it's the single most important methodological finding in this project.
+  </p>
+
+  <h3>Leakage audit</h3>
+  <p>
+    We deliberately re-added the label-derived <code>ctr_gap</code> column to the final honest model as an attack test: ROC AUC jumped from 0.658 to 1.000, confirming the earlier exclusion was correct. Full attack checklist (timeline, label-derived features, product flags, population selection, grouped split, base rate, feature-importance sanity check, out-of-fold metrics) passed.
+  </p>
+
+  <h2>Results</h2>
+  <p>All numbers below are on the same client-grouped holdout test split (n = 1,461 pages, 9 held-out clients), base rate 0.455.</p>
+
+  <table>
+    <tr><th>Method</th><th>ROC AUC</th><th>Precision@50</th><th>Precision@200</th></tr>
+    <tr><td>Baseline (ctr_gap × impressions)</td><td>1.000</td><td>1.00</td><td>1.000</td></tr>
+    <tr><td>Logistic Regression (honest features)</td><td>0.564</td><td>0.54</td><td>0.615</td></tr>
+    <tr><td><strong>Random Forest (honest features)</strong></td><td><strong>0.658</strong></td><td><strong>0.52</strong></td><td><strong>0.550</strong></td></tr>
+  </table>
+
+  <figure>
+    <img src="img/results_chart.png" alt="Bar chart comparing Precision@50 and Precision@200 across base rate, Logistic Regression, Random Forest, and the baseline">
+    <figcaption>Random Forest and Logistic Regression both clear the 0.455 base rate using only indirect, pre-CTR signals. The baseline's near-1.0 score reflects direct access to CTR, not superior modeling.</figcaption>
+  </figure>
+
+  <p>
+    <strong>What the model leans on:</strong> feature importances are dominated by <code>avg_position</code> (0.282), <code>word_count</code> (0.184), <code>content_age_days</code> (0.176), and <code>impressions_90d</code> (0.143) — all plausible proxies for underperformance, none suspiciously dominant in a way that suggested a hidden leak.
+  </p>
+  <p>
+    <strong>Errors:</strong> the model was wrong on 42.3% of the test set. Hand-reviewed wrong cases were consistently borderline — pages at mediocre positions with modest traffic that could plausibly land on either side of their tier's median CTR for reasons the honest features can't see (title quality, snippet wording, search-intent match). That's the honest ceiling of predicting CTR-underperformance without looking at CTR.
+  </p>
+
+  <h2>Limitations &amp; Honest Framing</h2>
+  <ul>
+    <li><strong>Not future-predictive.</strong> This is a same-window comparison. It does not claim a page will decline, or that editing it will recover clicks.</li>
+    <li><strong>The baseline-vs-model comparison isn't a fair fight, on purpose.</strong> The baseline uses CTR directly; the model deliberately doesn't, to answer a harder question. The baseline's high score reflects that head start, not modeling quality.</li>
+    <li><strong>Starter-slice scale.</strong> 30,000 rows, 32 clients, one 90-day snapshot — not validated across seasons or at the full ~79M-row warehouse scale.</li>
+    <li><strong>Silent exclusions.</strong> Clients without tracking history in this window simply aren't represented — not as zeros, just absent.</li>
+    <li><strong>No causal claims.</strong> Nothing here claims a title rewrite causes a CTR increase, and nothing claims insight into Google's ranking algorithm.</li>
+  </ul>
+  <p>
+    Every claim in this paper is framed as <em>observed</em>, <em>measured</em>, or <em>decision-support</em> — never causal, never predictive of the future, never a claim about how a search engine works internally.
+  </p>
+
+  <h2>Ranked Recommendations</h2>
+  <p>
+    The action playbook ranks the honest grouped-split Random Forest's top-scored pages, each carrying a plain-word reason code (<code>weak_position_high_traffic</code>, <code>thin_content_visible</code>, or <code>model_flagged_pattern</code>) and one action: <code>review_title_meta_snippet</code>.
+  </p>
+  <p>
+    At Precision@50 (0.52), an editor reviewing the top 50 pages this week should expect roughly half to be genuine CTR-gap cases — modestly, but meaningfully, better than picking 50 pages at random (base rate 0.455). Before acting on any row, a human should confirm: does the page's title/snippet genuinely look weak, is the traffic volume comfortably above the 500-impression floor, and does the reason code make sense on inspection? High model scores are never a diagnosis by themselves — this queue prioritizes attention, it doesn't replace editorial judgment.
+  </p>
+
+  <h2>Reproducibility</h2>
+  <p>Every number in this paper traces back to a committed, executed notebook in the repository:</p>
+  <ul class="repro-list">
+    <li><a href="https://github.com/Seif-2/ML-week-1-FLY/blob/main/work/notebooks/w04_baseline_score.ipynb">w04_baseline_score.ipynb</a> — the baseline rule and signal checks</li>
+    <li><a href="https://github.com/Seif-2/ML-week-1-FLY/blob/main/work/notebooks/w05_model.ipynb">w05_model.ipynb</a> — the model, split, and initial comparison</li>
+    <li><a href="https://github.com/Seif-2/ML-week-1-FLY/blob/main/work/notebooks/w06_validation_audit.ipynb">w06_validation_audit.ipynb</a> — the random-vs-grouped split audit and leakage re-check</li>
+    <li><a href="https://github.com/Seif-2/ML-week-1-FLY/blob/main/work/notebooks/w07_action_playbook.ipynb">w07_action_playbook.ipynb</a> — the final ranked queue and metrics receipt</li>
+    <li><a href="https://github.com/Seif-2/ML-week-1-FLY/blob/main/work/notebooks/capstone.ipynb">capstone.ipynb</a> — this paper's mirror notebook</li>
+  </ul>
+  <p>Random seed 42 used throughout (data split, Logistic Regression, Random Forest). Metrics receipt: <code>work/outputs/w07_metrics.json</code>.</p>
+
+  <footer>
+    <p><strong>Acknowledgments &amp; data credit:</strong> Built on the FlyRank ML Internship dataset — <a href="https://flyrank.ai">flyrank.ai</a>.</p>
+  </footer>
+
+</div>
+</body>
+</html>
